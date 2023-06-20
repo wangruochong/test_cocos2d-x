@@ -109,6 +109,7 @@ AssetsManagerEx::AssetsManagerEx(const std::string& manifestUrl, const std::stri
     _tempManifestPath = _tempStoragePath + TEMP_MANIFEST_FILENAME;
 
     initManifests(manifestUrl);
+    CCLOG("AssetsManagerEx : constructor");
 }
 
 AssetsManagerEx::~AssetsManagerEx()
@@ -506,6 +507,8 @@ void AssetsManagerEx::decompressDownloadedZip(const std::string &customId, const
 
 void AssetsManagerEx::dispatchUpdateEvent(EventAssetsManagerEx::EventCode code, const std::string &assetId/* = ""*/, const std::string &message/* = ""*/, int curle_code/* = CURLE_OK*/, int curlm_code/* = CURLM_OK*/)
 {
+    int eventCode = static_cast<int>(code);
+    CCLOG("AssetsManagerEx : dispatchUpdateEvent %d", eventCode);
     switch (code)
     {
         case EventAssetsManagerEx::EventCode::ERROR_UPDATING:
@@ -747,6 +750,7 @@ void AssetsManagerEx::startUpdate()
 
 void AssetsManagerEx::updateSucceed()
 {
+    CCLOG("AssetsManagerEx updateSucceed");
     // Every thing is correctly downloaded, do the following
     // 1. rename temporary manifest to valid manifest
     std::string tempFileName = TEMP_MANIFEST_FILENAME;
@@ -755,6 +759,7 @@ void AssetsManagerEx::updateSucceed()
     // 2. merge temporary storage path to storage path so that temporary version turns to cached version
     if (_fileUtils->isDirectoryExist(_tempStoragePath))
     {
+        CCLOG("AssetsManagerEx merging all files in temp storage path to storage path");
         // Merging all files in temp storage path to storage path
         std::vector<std::string> files;
         _fileUtils->listFilesRecursively(_tempStoragePath, &files);
@@ -861,7 +866,7 @@ void AssetsManagerEx::update()
     }
 
     _updateEntry = UpdateEntry::DO_UPDATE;
-
+    CCLOG("AssetsManagerEx : update");
     switch (_updateState) {
         case State::UNCHECKED:
         {
@@ -954,6 +959,7 @@ void AssetsManagerEx::downloadFailedAssets()
 
 void AssetsManagerEx::fileError(const std::string& identifier, const std::string& errorStr, int errorCode, int errorCodeInternal)
 {
+    CCLOG("AssetsManagerEx fileError: %s %s", identifier.c_str(), errorStr.c_str());
     auto unitIt = _downloadUnits.find(identifier);
     // Found unit and add it to failed units
     if (unitIt != _downloadUnits.end())
@@ -962,6 +968,7 @@ void AssetsManagerEx::fileError(const std::string& identifier, const std::string
         
         DownloadUnit unit = unitIt->second;
         _failedUnits.emplace(unit.customId, unit);
+        CCLOG("AssetsManagerEx fileError: %s %s", unit.customId.c_str(), unit.srcUrl.c_str());
     }
     dispatchUpdateEvent(EventAssetsManagerEx::EventCode::ERROR_UPDATING, identifier, errorStr, errorCode, errorCodeInternal);
     _tempManifest->setAssetDownloadState(identifier, Manifest::DownloadState::UNSTARTED);
@@ -1183,13 +1190,17 @@ void AssetsManagerEx::queueDowload()
 
 void AssetsManagerEx::onDownloadUnitsFinished()
 {
+    int state = static_cast<int>(_updateState);
+    CCLOG("AssetsManagerEx onDownloadUnitsFinished %d", state);
     // Finished with error check
     if (_failedUnits.size() > 0)
     {
         // Save current download manifest information for resuming
         _tempManifest->saveToFile(_tempManifestPath);
-    
         _updateState = State::FAIL_TO_UPDATE;
+        for (auto it = _failedUnits.begin(); it != _failedUnits.end(); ++it) {
+            CCLOG("AssetsManagerEx onDownloadUnitsFinished: %s %s", it->second.customId.c_str(), it->second.srcUrl.c_str());
+        }
         dispatchUpdateEvent(EventAssetsManagerEx::EventCode::UPDATE_FAILED);
     }
     else if (_updateState == State::UPDATING)

@@ -741,6 +741,7 @@ JS::PersistentRootedScript* ScriptingCore::compileScript(const std::string& path
         JS::CompileOptions op(cx);
         op.setUTF8(true);
         std::string fullPath = futil->fullPathForFilename(path);
+        CCLOG("ScriptingCore::compileScript:%s %s", path.c_str(), fullPath.c_str());
         op.setFileAndLine(fullPath.c_str(), 1);
 
         bool ok = false;
